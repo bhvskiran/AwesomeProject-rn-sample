@@ -25,6 +25,7 @@ const MainScreen: React.FC = (props: any) => {
   const [filesList, setFilesList] = useState<any[]>([]);
   const [loader, setLoader] = useState<boolean>(false);
   const [showError, setShowError] = useState<boolean>(false);
+  const [downloadingFile, setDownloadingFile] = useState<any>();
 
   useEffect(() => {
     readFiles();
@@ -67,18 +68,23 @@ const MainScreen: React.FC = (props: any) => {
         toFile: filePath,
         background: true,
         discretionary: true,
+        begin: (res: any) => null,
         progress: (res: any) => {
-          const progress = (res.bytesWritten / res.contentLength) * 100;
-          console.log(`Progress: ${progress.toFixed(2)}%`);
+          const file = {
+            name: fileName,
+            progress: ((res.bytesWritten / res.contentLength) * 100).toFixed(0),
+          };
+          setDownloadingFile(file);
         },
       };
       const isExists = await RNFS.exists(filePath);
+      setLoader(false);
       if (!isExists) {
         const res = await RNFS.downloadFile(options).promise.then(response => {
+          setDownloadingFile(undefined);
           readFiles();
         });
       }
-      setLoader(false);
     } catch (error) {
       setLoader(false);
       console.log(error);
@@ -132,13 +138,26 @@ const MainScreen: React.FC = (props: any) => {
                 </Text>
               )}
               <TouchableOpacity
-                style={styles.downloadBtn}
-                onPress={() => requestMediaPermission()}>
+                style={[
+                  styles.downloadBtn,
+                  {opacity: downloadingFile?.name ? 0.5 : 1},
+                ]}
+                onPress={() => requestMediaPermission()}
+                disabled={downloadingFile?.name}>
                 <Text style={styles.downloadText}>DOWNLOAD</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.hLine} />
             <Text style={styles.subhead}>Downloaded Videos</Text>
+
+            {downloadingFile?.name && (
+              <View style={styles.fileCard}>
+                <Text style={styles.fileName} numberOfLines={1}>
+                  {downloadingFile.name}
+                </Text>
+                <Text style={styles.delBtn}>{downloadingFile.progress}%</Text>
+              </View>
+            )}
 
             <FlatList
               data={filesList}
